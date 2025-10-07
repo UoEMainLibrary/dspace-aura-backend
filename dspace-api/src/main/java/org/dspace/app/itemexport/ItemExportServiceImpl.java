@@ -107,11 +107,6 @@ public class ItemExportServiceImpl implements ItemExportService {
      */
     private final Logger log = org.apache.logging.log4j.LogManager.getLogger();
 
-    // Variables for portico export functionality
-    private String porticoFileName;
-    private String porticoEperson;
-    private boolean porticoFile =  false;
-
     private DSpaceRunnableHandler handler;
 
     protected ItemExportServiceImpl() {
@@ -549,20 +544,6 @@ public class ItemExportServiceImpl implements ItemExportService {
         processDownloadableExport(dsObjects, context, additionalEmail, migrate);
     }
 
-    // Method to create download for portico
-    @Override
-    public void createDownloadablePorticoExport(DSpaceObject dso,
-            Context context, boolean migrate, boolean porticoFlag) throws Exception
-    {
-        porticoFile = porticoFlag;
-        EPerson eperson = context.getCurrentUser();
-        // Store portico ePerson ID
-        porticoEperson = eperson.getID().toString();
-        ArrayList<DSpaceObject> list = new ArrayList<DSpaceObject>(1);
-        list.add(dso);
-        processDownloadableExport(list, context, eperson == null ? null : eperson.getEmail(), migrate);
-    }
-
     /**
      * Does the work creating a List with all the Items in the Community or
      * Collection It then kicks off a new Thread to export the items, zip the
@@ -648,10 +629,6 @@ public class ItemExportServiceImpl implements ItemExportService {
                 }
             } else if (dso.getType() == Constants.ITEM) {
                 Item item = (Item) dso;
-                // trigger portico export file name formatting
-                if (porticoFile){
-                    exportForPortico(item);
-                }
                 // get all the bundles in the item
                 List<Bundle> bundles = item.getBundles();
                 for (Bundle bundle : bundles) {
@@ -782,25 +759,11 @@ public class ItemExportServiceImpl implements ItemExportService {
         boolean exists = true;
         String fileName = null;
         while (exists) {
-            // fileName = type + "_export_" + sdf.format(date) + "_" + count + "_"
-            //     + eperson.getID();
-            // exists = new File(downloadDir
-            //                       + System.getProperty("file.separator") + fileName + ".zip")
-            //     .exists();
-            // count++;
-            if (porticoFile)
-            {
-                fileName = type + "_export_" + sdf.format(date) + "_" + porticoFileName;
-                porticoFile = false;
-            }
-            else
-            {
-                fileName = type + "_export_" + sdf.format(date) + "_" + count + "_" + eperson.getID();
-            }
-
+            fileName = type + "_export_" + sdf.format(date) + "_" + count + "_"
+                + eperson.getID();
             exists = new File(downloadDir
-                    + System.getProperty("file.separator") + fileName + ".zip")
-                    .exists();
+                                  + System.getProperty("file.separator") + fileName + ".zip")
+                .exists();
             count++;
         }
         return fileName;
@@ -850,12 +813,8 @@ public class ItemExportServiceImpl implements ItemExportService {
 
     @Override
     public long getExportFileSize(Context context, String fileName) throws Exception {
-        // original dspace code, replaced with downloadForPortico() below
-        // String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
-        //                                   fileName.lastIndexOf('.'));
-        // EPerson ePerson = getEPersonFromString(context, strID);
-
-        String strID = downloadForPortico(context, fileName);
+        String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
+                                          fileName.lastIndexOf('.'));
         EPerson ePerson = getEPersonFromString(context, strID);
 
 
@@ -894,10 +853,8 @@ public class ItemExportServiceImpl implements ItemExportService {
     @Override
     public long getExportFileLastModified(Context context, String fileName)
         throws Exception {
-        // original dspace code, replaced with downloadForPortico() below
-        // String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
-        //                                   fileName.lastIndexOf('.'));
-        String strID = downloadForPortico(context, fileName);
+        String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
+                                          fileName.lastIndexOf('.'));
         EPerson ePerson = getEPersonFromString(context, strID);
 
         File file = new File(
@@ -919,11 +876,8 @@ public class ItemExportServiceImpl implements ItemExportService {
         if (eperson == null) {
             return false;
         }
-        // original dspace code, replaced with downloadForPortico() below
-        // String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
-        //                                   fileName.lastIndexOf('.'));
-
-         String strID = downloadForPortico(context, fileName);
+        String strID = fileName.substring(fileName.lastIndexOf('_') + 1,
+                                          fileName.lastIndexOf('.'));
         try {
             if (strID.equals(eperson.getID().toString())) {
                 return true;
@@ -1154,36 +1108,6 @@ public class ItemExportServiceImpl implements ItemExportService {
         }
 
         return (path.delete());
-    }
-
-    // Returns String representing portico file name
-    private void exportForPortico(Item item)
-    {
-        List <Bundle> bundles = item.getBundles();
-        try
-        {
-            String rawBitstreamString = bundles.get(0).getBitstreams().get(0).getName();
-            int split = rawBitstreamString.indexOf(".");
-            porticoFileName = rawBitstreamString.substring(0, split);
-        }
-        catch(NullPointerException npe) {
-            log.error("Could not get a bitstream for naming Portico export for item: " + item.getHandle());
-        }
-    }
-
-    // Checks and returns the correct ePerson ID string based on what type of download it is
-    public String downloadForPortico(Context context, String fileName)
-    {
-        String strID; 
-        if(porticoEperson.equals(context.getCurrentUser().getID().toString()))
-        {
-            strID = porticoEperson;
-        }
-        else 
-        {
-            strID = fileName.substring(fileName.lastIndexOf('_') + 1, fileName.lastIndexOf(File.separator));
-        }
-        return strID;
     }
 
     @Override

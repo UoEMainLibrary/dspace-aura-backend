@@ -37,6 +37,8 @@ import org.dspace.scripts.ProcessQueryParameterContainer;
 import org.dspace.scripts.Process_;
 import org.dspace.scripts.service.ProcessService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -65,6 +67,15 @@ public class ProcessRestRepository extends DSpaceRestRepository<ProcessRest, Int
     @Autowired
     private EPersonService epersonService;
 
+    /**
+     * Marks any processes left running before the previous shutdown as failed after the application is ready.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void init() throws SQLException, AuthorizeException, IOException {
+        Context context = new Context();
+        processService.failRunningProcesses(context);
+        context.complete();
+    }
 
     @Override
     @PreAuthorize("hasPermission(#id, 'PROCESS', 'READ')")

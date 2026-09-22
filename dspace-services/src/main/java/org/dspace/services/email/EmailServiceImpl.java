@@ -62,6 +62,8 @@ public class EmailServiceImpl
     }
 
     @PostConstruct
+    // JNDI usage is safe here as it looks up a configured mail session resource, not user input.
+    @SuppressWarnings("BanJNDI")
     public void init() {
         // See if there is already a Session in our environment
         String sessionName = cfg.getProperty("mail.session.name");
